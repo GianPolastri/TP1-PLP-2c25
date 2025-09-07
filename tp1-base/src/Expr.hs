@@ -22,26 +22,44 @@ data Expr
   | Div Expr Expr
   deriving (Show, Eq)
 
--- recrExpr :: ... anotar el tipo ...
-recrExpr = error "COMPLETAR EJERCICIO 7"
+recExpr :: (Float -> a) -> (Float -> Float -> a) -> (Expr -> a -> Expr -> a -> a)  -> (Expr -> a -> Expr -> a -> a) -> (Expr -> a -> Expr -> a -> a) -> (Expr -> a -> Expr -> a -> a) -> Expr -> a
+recrExpr fCons  fRang fSum fRes fMul fDiv e  = case e of 
+                                  Const a   -> fCons a 
+                                  Rango a b -> fRang a b
+                                  Suma a b  -> fSuma a (rec a) b (rec b)
+                                  Resta a b -> fRes a (rec a) b (rec b)
+                                  Mult a b  -> fMul a (rec a) b (rec b)
+                                  Div a b   -> fDiv a (rec a) b  (rec b)
+                                  where
+                                    rec     = recrExpr fCosn fRang fSum fRes fMul fDiv 
 
--- foldExpr :: ... anotar el tipo ...
-foldExpr = error "COMPLETAR EJERCICIO 7"
+foldExpr :: (Float-> a) -> (Float -> Float -> a) -> (a -> a -> a)  -> (a -> a -> a) -> (a -> a -> a) -> (a -> a -> a) -> Expr -> a
+foldExpr fCosn fRang fSum fRes fMul fDiv e  = case e of
+                                  Const a   -> fCons a
+                                  Rango a b -> fRang a b 
+                                  Suma a b  -> fSum (rec a) (rec b)
+                                  Resta a b -> fRes (rec a) (rec b)
+                                  Mult a b  -> fMul (rec a) (rec b)
+                                  Div a b   -> fDiv (rec a) (rec b)
+                                  where 
+                                    rec     = foldExpr fCosn fRang fSum fRes fMul fDiv
+   
 
 -- | Evaluar expresiones dado un generador de números aleatorios
 eval :: Expr -> G Float
-eval = error "COMPLETAR EJERCICIO 8"
+eval = foldExpr (id) (\a b -> dameUno (a, b)) (+) (-) (*) (/)
 
 -- | @armarHistograma m n f g@ arma un histograma con @m@ casilleros
 -- a partir del resultado de tomar @n@ muestras de @f@ usando el generador @g@.
 armarHistograma :: Int -> Int -> G Float -> G Histograma
-armarHistograma m n f g = error "COMPLETAR EJERCICIO 9"
-
+armarHistograma m n f g  = (histograma m (rango95 xs) xs, g')
+              where
+                (xs, g') = muestra f n g
 -- | @evalHistograma m n e g@ evalúa la expresión @e@ usando el generador @g@ @n@ veces
 -- devuelve un histograma con @m@ casilleros y rango calculado con @rango95@ para abarcar el 95% de confianza de los valores.
 -- @n@ debe ser mayor que 0.
 evalHistograma :: Int -> Int -> Expr -> G Histograma
-evalHistograma m n expr = error "COMPLETAR EJERCICIO 10"
+evalHistograma m n e = armarHistograma m n (eval e)
 
 -- Podemos armar histogramas que muestren las n evaluaciones en m casilleros.
 -- >>> evalHistograma 11 10 (Suma (Rango 1 5) (Rango 100 105)) (genNormalConSemilla 0)
@@ -53,11 +71,33 @@ evalHistograma m n expr = error "COMPLETAR EJERCICIO 10"
 -- | Mostrar las expresiones, pero evitando algunos paréntesis innecesarios.
 -- En particular queremos evitar paréntesis en sumas y productos anidados.
 mostrar :: Expr -> String
-mostrar = error "COMPLETAR EJERCICIO 11"
+mostrar = recExpr
+  (\x -> show x)
+  (\a b -> show a ++ "∼" ++ show b)
+  (\e1 s1 e2 s2 -> maybeParen (esMulDiv e1) s1 ++ " + " ++ maybeParen (esMulDiv e2) s2)  
+  (\e1 s1 e2 s2 -> maybeParen (esOp e1) s1 ++ " - " ++ maybeParen (esOp e2) s2)
+  (\e1 s1 e2 s2 -> maybeParen (esSumRes e1) s1 ++ " * " ++ maybeParen (esSumRes e2) s2)
+  (\e1 s1 e2 s2 -> maybeParen (esSumRes e1) s1 ++ " / " ++ maybeParen (esOp e2) s2)
+  where
+    -- es cualquier operador (suma, resta, mult, div)
+    esOp e = case constructor e of
+               CESuma  -> True
+               CEResta -> True
+               CEMult  -> True
+               CEDiv   -> True
+               _       -> False
 
-data ConstructorExpr = CEConst | CERango | CESuma | CEResta | CEMult | CEDiv
-  deriving (Show, Eq)
+    -- es suma o resta
+    esSumRes e = case constructor e of
+                   CESuma  -> True
+                   CEResta -> True
+                   _       -> False
 
+    -- es multiplicación o división
+    esMulDiv e = case constructor e of
+                   CEMult  -> True
+                   CEDiv   -> True
+                   _       -> False
 -- | Indica qué constructor fue usado para crear la expresión.
 constructor :: Expr -> ConstructorExpr
 constructor (Const _) = CEConst
