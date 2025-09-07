@@ -24,6 +24,7 @@ module Histograma
 where
 
 import Util
+import Data.List (zipWith4)
 
 data Histograma = Histograma Float Float [Int]
   deriving (Show, Eq)
@@ -32,16 +33,24 @@ data Histograma = Histograma Float Float [Int]
 -- valores en el rango y 2 casilleros adicionales para los valores fuera del rango.
 -- Require que @l < u@ y @n >= 1@.
 vacio :: Int -> (Float, Float) -> Histograma
-vacio n (l, u) = Histograma l ((u-l)/(fromIntegral n)) (replicate (n+2) 0)
+vacio n (l, u) = Histograma l t cs 
+                where 
+                    cs = replicate (n+2) 0
+                    t = (u - l)/ fromIntegral n
 
 -- | Agrega un valor al histograma.
 agregar :: Float -> Histograma -> Histograma
-agregar x (Histograma l intervalo contadorCasilleros) = Histograma l intervalo (actualizarElem (mod (floor x) (floor intervalo))  (+1) contadorCasilleros)
+agregar x (Histograma l t cs) = Histograma l t (actualizarElem idx (+1) cs)
+                                where
+                                  idx                 = min candidato idxMax
+                                  idxMax              = length cs - 1
+                                  candidato      
+                                          | x < l     = 0
+                                          | otherwise = (floor((x - l) / t) +1) -- +1 porque indice 0 es fuera de rango
 
 -- | Arma un histograma a partir de una lista de números reales con la cantidad de casilleros y rango indicados.
 histograma :: Int -> (Float, Float) -> [Float] -> Histograma
-histograma n r xs = error "COMPLETAR EJERCICIO 5"
-
+histograma n r xs = foldr agregar (vacio n r) xs
 -- | Un `Casillero` representa un casillero del histograma con sus límites, cantidad y porcentaje.
 -- Invariante: Sea @Casillero m1 m2 c p@ entonces @m1 < m2@, @c >= 0@, @0 <= p <= 100@
 data Casillero = Casillero Float Float Int Float
@@ -65,4 +74,13 @@ casPorcentaje (Casillero _ _ _ p) = p
 
 -- | Dado un histograma, devuelve la lista de casilleros con sus límites, cantidad y porcentaje.
 casilleros :: Histograma -> [Casillero]
-casilleros _ = error "COMPLETAR EJERCICIO 6"
+casilleros (Histograma i t cs) =
+  zipWith4 Casillero mins maxs cs porcentajes
+  where
+    total = sum cs
+    n = length cs
+    mins = (-1/0) : [ i + t * fromIntegral k | k <- [0 .. n-2] ]
+    maxs = [ i + t * fromIntegral k | k <- [0 .. n-2] ] ++ [1/0]
+    porcentajes
+      | total == 0 = replicate n 0.0
+      | otherwise  = [ fromIntegral c * 100 / fromIntegral total | c <- cs ]    
