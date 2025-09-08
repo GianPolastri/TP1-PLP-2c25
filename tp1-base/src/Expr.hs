@@ -73,7 +73,7 @@ evalHistograma m n e = armarHistograma m n (eval e)
 mostrar :: Expr -> String
 mostrar = recExpr
   (\x -> show x)
-  (\a b -> show a ++ "∼" ++ show b)
+  (\a b -> show a ++ "~" ++ show b)
   (\e1 s1 e2 s2 -> maybeParen (esMulDiv e1) s1 ++ " + " ++ maybeParen (esMulDiv e2) s2)  
   (\e1 s1 e2 s2 -> maybeParen (esOp e1) s1 ++ " - " ++ maybeParen (esOp e2) s2)
   (\e1 s1 e2 s2 -> maybeParen (esSumRes e1) s1 ++ " * " ++ maybeParen (esSumRes e2) s2)
