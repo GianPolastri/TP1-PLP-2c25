@@ -25,18 +25,28 @@ where
 
 import Util
 
-data Histograma = Histograma Float Float [Int]
+data Histograma = Histograma Float Float [Int] -- i :: float = inicio, t :: float = tamaño, cs :: [Int] = contador de cuentas  
   deriving (Show, Eq)
 
 -- | Inicializa un histograma vacío con @n@ casilleros para representar
 -- valores en el rango y 2 casilleros adicionales para los valores fuera del rango.
 -- Require que @l < u@ y @n >= 1@.
 vacio :: Int -> (Float, Float) -> Histograma
-vacio n (l, u) = Histograma l ((u-l)/(fromIntegral n)) (replicate (n+2) 0)
+vacio n (l, u) =
+  Histograma l size (replicate (n + 2) 0)
+  where
+    size = (u - l) / fromIntegral n         -- size lo calculé así porque sería calcular el intervalo [l,u) en n "subintervalos"
+
 
 -- | Agrega un valor al histograma.
 agregar :: Float -> Histograma -> Histograma
-agregar x (Histograma l intervalo contadorCasilleros) = Histograma l intervalo (actualizarElem (mod (floor x) (floor intervalo))  (+1) contadorCasilleros)
+agregar x (Histograma i t cs) = Histograma i t (actualizarElem idx (+1) cs)
+  where
+    n = length cs - 2
+    idx
+      | x < 1 = 0                             -- cae en el casillero 0 = (-inf, i)
+      | x >= i + fromIntegral n * t = n + 1   -- cae en el último casillero (n+1)
+      | otherwise = 1 + floor ((x - i) / t)   -- cae en alguno del medio, se calcula cual
 
 -- | Arma un histograma a partir de una lista de números reales con la cantidad de casilleros y rango indicados.
 histograma :: Int -> (Float, Float) -> [Float] -> Histograma
