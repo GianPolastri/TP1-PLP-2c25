@@ -1,4 +1,5 @@
--- | Un `Histograma` es una estructura de datos que permite contar cuántos valores hay en cada rango.
+import Data.List (zipWith4)
+--  Un `Histograma` es una estructura de datos que permite contar cuántos valores hay en cada rango.
 -- @vacio n (a, b)@ devuelve un histograma vacío con n+2 casilleros:
 --
 -- * @(-inf, a)@
@@ -24,7 +25,6 @@ module Histograma
 where
 
 import Util
-import Util (actualizarElem)
 
 data Histograma = Histograma Float Float [Int]
   deriving (Show, Eq)
@@ -39,16 +39,16 @@ vacio n (l, u) = Histograma l ((u - l) / (fromIntegral n)) (replicate (n + 2) 0)
 agregar :: Float -> Histograma -> Histograma
 agregar x (Histograma l intervalo contadorCasilleros) = Histograma l intervalo contadorAct 
                                                       where 
-                                                        contadorAct = actualizarElem (i (+1) contadorCasilleros)  
-                                                        i | x < l = 0 -- x E [-inf,l) 
+                                                        contadorAct = actualizarElem i (+1) contadorCasilleros   
+                                                        i
+                                                          | x < l = 0 -- x E [-inf,l) 
                                                           | x > l + intervalo * ((length contadorCasilleros) -2) = ((length contadorCasilleros) -1) -- x E (u, +inf)
-                                                          | otherwise (floor (x / l )) + 1
+                                                          | otherwise = (floor (x - l / intervalo )) + 1
                            
---(actualizarElem (if x < l then 0 else (mod (floor x) (floor intervalo))) (+ 1) contadorCasilleros)
 
 -- | Arma un histograma a partir de una lista de números reales con la cantidad de casilleros y rango indicados.
 histograma :: Int -> (Float, Float) -> [Float] -> Histograma
-histograma n r xs = error "COMPLETAR EJERCICIO 5"
+histograma l rango xs = foldr agregar (vacio l rango) xs 
 
 -- | Un `Casillero` representa un casillero del histograma con sus límites, cantidad y porcentaje.
 -- Invariante: Sea @Casillero m1 m2 c p@ entonces @m1 < m2@, @c >= 0@, @0 <= p <= 100@
@@ -73,4 +73,8 @@ casPorcentaje (Casillero _ _ _ p) = p
 
 -- | Dado un histograma, devuelve la lista de casilleros con sus límites, cantidad y porcentaje.
 casilleros :: Histograma -> [Casillero]
-casilleros _ = error "COMPLETAR EJERCICIO 6"
+casilleros (Histograma l rango xs) = zipWith4 Casillero li ls xs porcentajes 
+                                  where
+                                    li = (infinitoNegativo) : [l + rango * k | k <- [0 .. (length(xs) - 2)]]
+                                    ls = [l + rango * k | k <- [0 .. (length(xs) - 2)]] ++ (infinitoPositivo)
+                                    porcentajes = [(x / fromIntegral sum(xs)) * 100 | x <- xs]
