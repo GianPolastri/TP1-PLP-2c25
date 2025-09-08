@@ -22,19 +22,19 @@ data Expr
   | Div Expr Expr
   deriving (Show, Eq)
 
-recExpr :: (Float -> a) -> (Float -> Float -> a) -> (Expr -> a -> Expr -> a -> a)  -> (Expr -> a -> Expr -> a -> a) -> (Expr -> a -> Expr -> a -> a) -> (Expr -> a -> Expr -> a -> a) -> Expr -> a
-recrExpr fCons  fRang fSum fRes fMul fDiv e  = case e of 
+recrExpr :: (Float -> a) -> (Float -> Float -> a) -> (Expr -> a -> Expr -> a -> a)  -> (Expr -> a -> Expr -> a -> a) -> (Expr -> a -> Expr -> a -> a) -> (Expr -> a -> Expr -> a -> a) -> Expr -> a
+recrExpr fCons fRang fSum fRes fMul fDiv e  = case e of 
                                   Const a   -> fCons a 
                                   Rango a b -> fRang a b
-                                  Suma a b  -> fSuma a (rec a) b (rec b)
+                                  Suma a b  -> fSum a (rec a) b (rec b)
                                   Resta a b -> fRes a (rec a) b (rec b)
                                   Mult a b  -> fMul a (rec a) b (rec b)
                                   Div a b   -> fDiv a (rec a) b  (rec b)
                                   where
-                                    rec     = recrExpr fCosn fRang fSum fRes fMul fDiv 
+                                    rec     = recrExpr fCons fRang fSum fRes fMul fDiv 
 
 foldExpr :: (Float-> a) -> (Float -> Float -> a) -> (a -> a -> a)  -> (a -> a -> a) -> (a -> a -> a) -> (a -> a -> a) -> Expr -> a
-foldExpr fCosn fRang fSum fRes fMul fDiv e  = case e of
+foldExpr fCons fRang fSum fRes fMul fDiv e  = case e of
                                   Const a   -> fCons a
                                   Rango a b -> fRang a b 
                                   Suma a b  -> fSum (rec a) (rec b)
@@ -42,7 +42,7 @@ foldExpr fCosn fRang fSum fRes fMul fDiv e  = case e of
                                   Mult a b  -> fMul (rec a) (rec b)
                                   Div a b   -> fDiv (rec a) (rec b)
                                   where 
-                                    rec     = foldExpr fCosn fRang fSum fRes fMul fDiv
+                                    rec     = foldExpr fCons fRang fSum fRes fMul fDiv
    
 
 -- | Evaluar expresiones dado un generador de números aleatorios
@@ -98,6 +98,10 @@ mostrar = recExpr
                    CEMult  -> True
                    CEDiv   -> True
                    _       -> False
+
+
+data ConstructorExpr = CEConst | CERango | CESuma | CEResta | CEMult | CEDiv
+  deriving (Show, Eq)                   
 -- | Indica qué constructor fue usado para crear la expresión.
 constructor :: Expr -> ConstructorExpr
 constructor (Const _) = CEConst
