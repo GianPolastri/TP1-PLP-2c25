@@ -45,12 +45,32 @@ foldExpr fCons fRang fSum fRes fMul fDiv e  = case e of
                                     rec     = foldExpr fCons fRang fSum fRes fMul fDiv
    
 
--- | Evaluar expresiones dado un generador de números aleatorios
-eval :: Expr -> G Float
-eval = foldExpr (id) (\a b -> dameUno (a, b)) (+) (-) (*) (/)
-
+--eval :: Expr -> G Float
+--eval = foldExpr (id) (\a b -> dameUno (a, b)) (+) (-) (*) (/)
 -- | @armarHistograma m n f g@ arma un histograma con @m@ casilleros
 -- a partir del resultado de tomar @n@ muestras de @f@ usando el generador @g@.
+
+-- Constante que deja el generador sin modificar
+constG :: Float -> G Float
+constG x g = (x, g)
+
+-- recibo un gnerador se lo paso al subarbol izquierdo y lo actualizo para pasarselo al subarbol derecho
+-- (rango es el unico que actualiza generadores)
+actualizarGen :: (Float -> Float -> Float) -> G Float -> G Float -> G Float
+actualizarGen op ga gb g0 =(\(a, g1) -> (\(b, g2) -> (op a b, g2)) (gb g1))(ga g0)
+
+-- | Evaluar expresiones dado un generador de números aleatorios
+-- G Float = Gen -> (Float, Gen), esta funcion espera un gen como parametro
+eval :: Expr -> G Float
+eval = foldExpr
+  constG                  
+  (\a b -> dameUno (a, b))
+  (actualizarGen (+))     
+  (actualizarGen (-))     
+  (actualizarGen (*))     
+  (actualizarGen (/))     
+
+
 armarHistograma :: Int -> Int -> G Float -> G Histograma
 armarHistograma m n f g  = (histograma m (rango95 xs) xs, g')
               where
@@ -71,7 +91,7 @@ evalHistograma m n e = armarHistograma m n (eval e)
 -- | Mostrar las expresiones, pero evitando algunos paréntesis innecesarios.
 -- En particular queremos evitar paréntesis en sumas y productos anidados.
 mostrar :: Expr -> String
-mostrar = recExpr
+mostrar = recrExpr
   (\x -> show x)
   (\a b -> show a ++ "~" ++ show b)
   (\e1 s1 e2 s2 -> maybeParen (esMulDiv e1) s1 ++ " + " ++ maybeParen (esMulDiv e2) s2)  
@@ -101,7 +121,8 @@ mostrar = recExpr
 
 
 data ConstructorExpr = CEConst | CERango | CESuma | CEResta | CEMult | CEDiv
-  deriving (Show, Eq)                   
+  deriving (Show, Eq)
+
 -- | Indica qué constructor fue usado para crear la expresión.
 constructor :: Expr -> ConstructorExpr
 constructor (Const _) = CEConst
