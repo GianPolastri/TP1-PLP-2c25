@@ -22,26 +22,70 @@ data Expr
   | Div Expr Expr
   deriving (Show, Eq)
 
--- recrExpr :: ... anotar el tipo ...
-recrExpr = error "COMPLETAR EJERCICIO 7"
+recrExpr :: (Float -> a) -> (Float -> Float -> a) -> (Expr -> a -> Expr -> a -> a)  -> (Expr -> a -> Expr -> a -> a) -> (Expr -> a -> Expr -> a -> a) -> (Expr -> a -> Expr -> a -> a) -> Expr -> a
+recrExpr fCons fRang fSum fRes fMul fDiv e  = case e of
+                                  Const a   -> fCons a
+                                  Rango a b -> fRang a b
+                                  Suma a b  -> fSum a (rec a) b (rec b)
+                                  Resta a b -> fRes a (rec a) b (rec b)
+                                  Mult a b  -> fMul a (rec a) b (rec b)
+                                  Div a b   -> fDiv a (rec a) b  (rec b)
+                                  where
+                                    rec     = recrExpr fCons fRang fSum fRes fMul fDiv
 
--- foldExpr :: ... anotar el tipo ...
-foldExpr = error "COMPLETAR EJERCICIO 7"
+foldExpr :: (Float-> a) -> (Float -> Float -> a) -> (a -> a -> a)  -> (a -> a -> a) -> (a -> a -> a) -> (a -> a -> a) -> Expr -> a
+foldExpr fCons fRang fSum fRes fMul fDiv e  = case e of
+                                  Const a   -> fCons a
+                                  Rango a b -> fRang a b
+                                  Suma a b  -> fSum (rec a) (rec b)
+                                  Resta a b -> fRes (rec a) (rec b)
+                                  Mult a b  -> fMul (rec a) (rec b)
+                                  Div a b   -> fDiv (rec a) (rec b)
+                                  where
+                                    rec     = foldExpr fCons fRang fSum fRes fMul fDiv
+
 
 -- | Evaluar expresiones dado un generador de números aleatorios
 eval :: Expr -> G Float
 eval = error "COMPLETAR EJERCICIO 8"
 
+{-
+liftM2 :: (Float -> Float -> Float) -> G Float -> G Float -> G Float
+liftM2 f g1 g2 = \g ->
+  let (x, g1') = g1 g
+      (y, g2') = g2 g1'
+   in (f x y, g2')
+
+{-
+liftM2 :: Monad m => (x -> y -> z) -> m x -> m y -> m z (https://learnyouahaskell.github.io/for-a-few-monads-more.html#useful-monadic-functions),
+por lo que en mi caso m = G y x = y = z = Float
+-}
+
+-- | Evaluar expresiones dado un generador de números aleatorios
+eval :: Expr -> G Float
+eval =
+  foldExpr
+    (\ x g -> (x,g))
+    (curry dameUno)
+    (liftM2 (+))
+    (liftM2 (-))
+    (liftM2 (*))
+    (liftM2 (/))
+-}
+
 -- | @armarHistograma m n f g@ arma un histograma con @m@ casilleros
 -- a partir del resultado de tomar @n@ muestras de @f@ usando el generador @g@.
 armarHistograma :: Int -> Int -> G Float -> G Histograma
-armarHistograma m n f g = error "COMPLETAR EJERCICIO 9"
+armarHistograma m n f g =
+  let (vals, g') = muestra f n g
+      rango = rango95 vals
+   in (histograma m rango vals, g')
 
 -- | @evalHistograma m n e g@ evalúa la expresión @e@ usando el generador @g@ @n@ veces
 -- devuelve un histograma con @m@ casilleros y rango calculado con @rango95@ para abarcar el 95% de confianza de los valores.
 -- @n@ debe ser mayor que 0.
 evalHistograma :: Int -> Int -> Expr -> G Histograma
-evalHistograma m n expr = error "COMPLETAR EJERCICIO 10"
+evalHistograma m n e = armarHistograma m n (eval e)
 
 -- Podemos armar histogramas que muestren las n evaluaciones en m casilleros.
 -- >>> evalHistograma 11 10 (Suma (Rango 1 5) (Rango 100 105)) (genNormalConSemilla 0)
@@ -53,7 +97,31 @@ evalHistograma m n expr = error "COMPLETAR EJERCICIO 10"
 -- | Mostrar las expresiones, pero evitando algunos paréntesis innecesarios.
 -- En particular queremos evitar paréntesis en sumas y productos anidados.
 mostrar :: Expr -> String
-mostrar = error "COMPLETAR EJERCICIO 11"
+mostrar =
+  recrExpr
+    show                              -- Const
+
+    (\a b -> show a ++ "∼" ++ show b) -- Rango
+
+    (\_ sL _ sR -> sL ++ " + " ++ sR) -- Suma
+
+    -- Resta
+    (\eL sL eR sR ->
+        maybeParen (constructor eL `elem` [CESuma, CEResta]) sL
+        ++ " - " ++
+        maybeParen (constructor eR `elem` [CESuma, CEResta]) sR)
+
+    -- Multiplicación
+    (\eL sL eR sR ->
+        maybeParen (constructor eL == CEMult) sL
+        ++ " * " ++
+        maybeParen (constructor eR == CEMult) sR)
+
+    -- División
+    (\eL sL eR sR ->
+        maybeParen (constructor eL `elem` [CESuma, CEResta, CEMult, CEDiv]) sL
+        ++ " / " ++
+        maybeParen (constructor eR `elem` [CESuma, CEResta, CEMult, CEDiv]) sR)
 
 data ConstructorExpr = CEConst | CERango | CESuma | CEResta | CEMult | CEDiv
   deriving (Show, Eq)
