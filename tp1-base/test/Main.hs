@@ -41,7 +41,8 @@ testsAlinearDerecha =
   test
     [ alinearDerecha 6 "hola" ~?= "  hola",
       alinearDerecha 10 "incierticalc" ~?= "incierticalc",
-      completar
+      alinearDerecha 9 "incierticalc" ~?= "incierticalc",
+      alinearDerecha 7 "VP" ~?= "     VP"
     ]
 
 testsActualizarElem :: Test
@@ -49,7 +50,9 @@ testsActualizarElem =
   test
     [ actualizarElem 0 (+ 10) [1, 2, 3] ~?= [11, 2, 3],
       actualizarElem 1 (+ 10) [1, 2, 3] ~?= [1, 12, 3],
-      completar
+      actualizarElem 2 (+ 5) [1, 2, 3] ~?= [1, 2, 8],
+      actualizarElem 2 (\x -> x - 2) [5, 6, 7] ~?= [5, 6, 5],
+      actualizarElem 0 (* 0) [9] ~?= [0]
     ]
 
 testsVacio :: Test
@@ -67,7 +70,7 @@ testsVacio =
               Casillero 4 6 0 0,
               Casillero 6 infinitoPositivo 0 0
             ],
-      completar
+      length (casilleros (vacio 4 (0, 8))) ~?= 6
     ]
 
 testsAgregar :: Test
@@ -95,15 +98,17 @@ testsAgregar =
                   Casillero 4 6 0 0,
                   Casillero 6 infinitoPositivo 0 0
                 ],
-          completar
+          casCantidad (casilleros (agregar 10 h0) !! 4) ~?= 1,
+          let h1 = agregar 1 (agregar 1 (agregar 4 h0))
+          in casCantidad (casilleros h1 !! 1) ~?= 2
         ]
 
 testsHistograma :: Test
 testsHistograma =
   test
     [ histograma 4 (1, 5) [1, 2, 3] ~?= agregar 3 (agregar 2 (agregar 1 (vacio 4 (1, 5)))),
-      completar
-    ]
+      histograma 4 (1, 5) [] ~?= vacio 4 (1, 5),
+      histograma 3 (0, 9) [1, 2, 2, 8, 9] ~?= agregar 9 (agregar 8 (agregar 2 (agregar 2 (agregar 1 (vacio 3 (0, 9))))))    ]
 
 testsCasilleros :: Test
 testsCasilleros =
@@ -122,19 +127,46 @@ testsCasilleros =
               Casillero 4.0 6.0 0 0.0,
               Casillero 6.0 infinitoPositivo 0 0.0
             ],
-      completar
-    ]
+      casCantidad (casilleros (agregar 3 (vacio 3 (0, 6))) !! 2) ~?= 1,
+      casPorcentaje (casilleros (agregar 3 (vacio 3 (0, 6))) !! 2) ~?= 100.0,
+      let h = histograma 3 (0, 6) [0, 1, 2, 3, 4, 5]
+      in sum (map casCantidad (casilleros h)) ~?= 6    ]
 
 testsRecr :: Test
 testsRecr =
   test
-    [ completar
+    [
+      let expr1 = Suma (Const 1) (Rango 2 3)
+          contadorCons _ = 1
+          contadorRang _ _ = 1
+          contadorSum _ r1 _ r2 = 1 + r1 + r2
+          contadorRes _ r1 _ r2 = 1 + r1 + r2
+          contadorMul _ r1 _ r2 = 1 + r1 + r2
+          contadorDiv _ r1 _ r2 = 1 + r1 + r2
+      in recrExpr contadorCons contadorRang contadorSum contadorRes contadorMul contadorDiv expr1 ~?= 3,
+      let expr2 = Mult (Const 2) (Suma (Const 1) (Const 3))
+      in recrExpr (\_ -> 1) (\_ _ -> 1) (\_ r1 _ r2 -> 1 + r1 + r2) (\_ r1 _ r2 -> 1 + r1 + r2) (\_ r1 _ r2 -> 1 + r1 + r2) (\_ r1 _ r2 -> 1 + r1 + r2) expr2 ~?= 5,
+      let expr3 = Resta (Suma (Const 1) (Const 2)) (Div (Const 10) (Const 5))
+      in recrExpr (\_ -> 1) (\_ _ -> 1) (\_ r1 _ r2 -> 1 + r1 + r2) (\_ r1 _ r2 -> 1 + r1 + r2) (\_ r1 _ r2 -> 1 + r1 + r2) (\_ r1 _ r2 -> 1 + r1 + r2) expr3 ~?= 7
+
     ]
 
 testsFold :: Test
 testsFold =
   test
-    [ completar
+    [ 
+      let expr1 = Mult (Const 2) (Suma (Const 1) (Const 3))
+          fCons _ = 1
+          fRang _ _ = 1
+          fSum a b = 1 + a + b
+          fRes a b = 1 + a + b
+          fMul a b = 1 + a + b
+          fDiv a b = 1 + a + b
+      in foldExpr fCons fRang fSum fRes fMul fDiv expr1 ~?= 5,
+      let expr2 = Suma (Const 1) (Suma (Const 2) (Const 3))
+      in foldExpr (\_ -> 1) (\_ _ -> 1) (\a b -> 1 + a + b) (\a b -> 1 + a + b) (\a b -> 1 + a + b) (\a b -> 1 + a + b) expr2 ~?= 5,
+      let expr3 = Div (Mult (Const 2) (Const 3)) (Const 4)
+      in foldExpr (\_ -> 1) (\_ _ -> 1) (\a b -> 1 + a + b) (\a b -> 1 + a + b) (\a b -> 1 + a + b) (\a b -> 1 + a + b) expr3 ~?= 5
     ]
 
 testsEval :: Test
@@ -144,18 +176,39 @@ testsEval =
       fst (eval (Suma (Rango 1 5) (Const 1)) (genNormalConSemilla 0)) ~?= 3.7980492,
       -- el primer rango evalua a 2.7980492 y el segundo a 3.1250308
       fst (eval (Suma (Rango 1 5) (Rango 1 5)) (genNormalConSemilla 0)) ~?= 5.92308,
-      completar
+      fst (eval (Suma (Rango 1 5) (Const 1)) genFijo) ~?= 4.0,
+      fst (eval (Suma (Rango 1 5) (Const 1)) (genNormalConSemilla 0)) ~?= 3.7980492,
+      -- el primer rango evalua a 2.7980492 y el segundo a 3.1250308
+      fst (eval (Suma (Rango 1 5) (Rango 1 5)) (genNormalConSemilla 0)) ~?= 5.92308,
+      fst (eval (Mult (Rango 2 4) (Const 3)) genFijo) ~?= 9.0,
+      fst (eval (Mult (Const 2) (Const 3)) genFijo) ~?= 6.0,
+      fst (eval (Div (Const 10) (Const 2)) genFijo) ~?= 5.0,
+      fst (eval (Suma (Const 1) (Suma (Const 2) (Const 3))) genFijo) ~?= 6.0
     ]
 
 testsArmarHistograma :: Test
 testsArmarHistograma =
   test
-    [completar]
+    [
+      let (h, _) = armarHistograma 3 3 (dameUno (2, 4)) genFijo
+      in casCantidad (casilleros h !! 2) ~?= 3,
+      let (h2, _) = armarHistograma 4 5 (dameUno (0, 10)) (genNormalConSemilla 1)
+      in sum (map casCantidad (casilleros h2)) ~?= 5,
+      let (h3, _) = armarHistograma 2 6 (dameUno (5, 5)) genFijo 
+      in casCantidad (casilleros h3 !! 2) ~?= 6
+    ]
 
 testsEvalHistograma :: Test
 testsEvalHistograma =
   test
-    [completar]
+    [
+      let (h, _) = evalHistograma 3 3 (Const 5) genFijo
+      in casCantidad (casilleros h !! 2) ~?= 3,
+      let (h2, _) = evalHistograma 4 5 (Const 2) (genNormalConSemilla 2)
+      in sum (map casCantidad (casilleros h2)) ~?= 5,
+      let (h3, _) = evalHistograma 2 4 (Suma (Const 1) (Const 1)) genFijo
+      in sum (map casCantidad (casilleros h3)) ~?= 4
+    ]
 
 testsParse :: Test
 testsParse =
