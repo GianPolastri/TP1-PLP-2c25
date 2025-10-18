@@ -3,7 +3,7 @@ module Util where
 -- | @alinearDerecha n s@ agrega espacios a la izquierda de @s@ hasta que su longitud sea @n@.
 -- Si @s@ ya tiene longitud @>= n@, devuelve @s@.
 alinearDerecha :: Int -> String -> String
-alinearDerecha n s = replicate (max 0 (n - length s)) ' ' ++ s
+alinearDerecha n s = replicate (n - length s) ' ' ++ s
 
 {-
 Replicate x ' ' genera una cadena de x espacios, por lo que al hacer max 0 (n - length s) 

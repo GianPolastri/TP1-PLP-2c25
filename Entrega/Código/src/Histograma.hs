@@ -42,16 +42,14 @@ vacio n (l, u) =
 -- | Agrega un valor al histograma.
 agregar :: Float -> Histograma -> Histograma
 agregar x (Histograma l t cs) = Histograma l t (actualizarElem idx (+1) cs)
-                                where
-                                  idx                 = min candidato idxMax
-                                  idxMax              = length cs - 1
-                                  candidato
-                                          | x < l     = 0
-                                          | otherwise = floor ((x - l) / t) +1 -- +1 porque indice 0 es fuera de rango
+  where
+    idx       = min idxMax (max 0 candidato)
+    idxMax    = length cs - 1
+    candidato = floor ((x - l) / t) + 1
 
 -- | Arma un histograma a partir de una lista de números reales con la cantidad de casilleros y rango indicados.
 histograma :: Int -> (Float, Float) -> [Float] -> Histograma
-histograma n r xs = foldr agregar (vacio n r) xs
+histograma n r = foldr agregar (vacio n r)
 
 -- | Un `Casillero` representa un casillero del histograma con sus límites, cantidad y porcentaje.
 -- Invariante: Sea @Casillero m1 m2 c p@ entonces @m1 < m2@, @c >= 0@, @0 <= p <= 100@

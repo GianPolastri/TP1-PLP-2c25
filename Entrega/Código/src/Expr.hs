@@ -52,13 +52,16 @@ constG x g = (x, g)
 -- recibo un gnerador se lo paso al subarbol izquierdo y lo actualizo para pasarselo al subarbol derecho
 -- (rango es el unico que actualiza generadores)
 actualizarGen :: (Float -> Float -> Float) -> G Float -> G Float -> G Float
-actualizarGen op ga gb g0 =(\(a, g1) -> (\(b, g2) -> (op a b, g2)) (gb g1))(ga g0)
-
+actualizarGen op ga gb g0 =
+  let (a, g1) = ga g0
+      (b, g2) = gb g1
+   in (op a b, g2)
+   
 -- | Evaluar expresiones dado un generador de números aleatorios
 -- G Float = Gen -> (Float, Gen), esta funcion espera un gen como parametro
 eval :: Expr -> G Float
 eval = foldExpr
-  constG                  
+  (,)                         -- reemplazo constG                  
   (\a b -> dameUno (a, b))
   (actualizarGen (+))     
   (actualizarGen (-))     
@@ -90,33 +93,28 @@ evalHistograma m n e = armarHistograma m n (eval e)
 -- En particular queremos evitar paréntesis en sumas y productos anidados.
 mostrar :: Expr -> String
 mostrar = recrExpr
-  (\x -> show x)
+  show
   (\a b -> show a ++ "~" ++ show b)
-  (\e1 s1 e2 s2 -> maybeParen (esMulDiv e1) s1 ++ " + " ++ maybeParen (esMulDiv e2) s2)  
-  (\e1 s1 e2 s2 -> maybeParen (esOp e1) s1 ++ " - " ++ maybeParen (esOp e2) s2)
-  (\e1 s1 e2 s2 -> maybeParen (esSumRes e1) s1 ++ " * " ++ maybeParen (esSumRes e2) s2)
-  (\e1 s1 e2 s2 -> maybeParen (esSumRes e1) s1 ++ " / " ++ maybeParen (esOp e2) s2)
+  (mostrarBin "+"  [CEMult, CEDiv])
+  (mostrarBin "-"  [CESuma, CEResta, CEMult, CEDiv])
+  (mostrarBin "*"  [CESuma, CEResta])
+  (mostrarBin "/"  [CESuma, CEResta, CEMult, CEDiv])
   where
-    -- es cualquier operador (suma, resta, mult, div)
-    esOp e = case constructor e of
-               CESuma  -> True
-               CEResta -> True
-               CEMult  -> True
-               CEDiv   -> True
-               _       -> False
+    mostrarBin :: String -> [ConstructorExpr] -> Expr -> String -> Expr -> String -> String
+    mostrarBin op cons e1 s1 e2 s2 =
+      let s1' = maybeParen (constructor e1 `elem` cons) s1
+          s2' = maybeParen (constructor e2 `elem` cons) s2
+       in s1' ++ " " ++ op ++ " " ++ s2'
 
-    -- es suma o resta
-    esSumRes e = case constructor e of
-                   CESuma  -> True
-                   CEResta -> True
-                   _       -> False
-
-    -- es multiplicación o división
-    esMulDiv e = case constructor e of
-                   CEMult  -> True
-                   CEDiv   -> True
-                   _       -> False
-
+{-
+- mostrarBin recibe un operador y una lista de constructores que requieren paréntesis
+op: operador
+cons: lista de constructores que requieren los paréntesis
+e1: subexp izquierda
+s1: representación de e1 convertida por recExpr
+e2: subexp derecha
+s2: representación de e2 convertida por recExpr
+-}
 data ConstructorExpr = CEConst | CERango | CESuma | CEResta | CEMult | CEDiv
   deriving (Show, Eq)
 
