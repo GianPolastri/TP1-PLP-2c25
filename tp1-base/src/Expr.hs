@@ -50,27 +50,22 @@ foldExpr fCons fRang fSum fRes fMul fDiv e  = case e of
 -- | @armarHistograma m n f g@ arma un histograma con @m@ casilleros
 -- a partir del resultado de tomar @n@ muestras de @f@ usando el generador @g@.
 
--- Constante que deja el generador sin modificar
-constG :: Float -> G Float
-constG x g = (x, g)
 
--- recibo un gnerador se lo paso al subarbol izquierdo y lo actualizo para pasarselo al subarbol derecho
--- (rango es el unico que actualiza generadores)
 actualizarGen :: (Float -> Float -> Float) -> G Float -> G Float -> G Float
-actualizarGen op ga gb g0 =(\(a, g1) -> (\(b, g2) -> (op a b, g2)) (gb g1))(ga g0)
+actualizarGen op ga gb gen0 =
+  let (a, gen1) = ga gen0
+      (b, gen2) = gb gen1
+  in (op a b, gen2)
 
--- | Evaluar expresiones dado un generador de números aleatorios
--- G Float = Gen -> (Float, Gen), esta funcion espera un gen como parametro
+
 eval :: Expr -> G Float
 eval = foldExpr
-  constG                  
+  (,)                
   (\a b -> dameUno (a, b))
-  (actualizarGen (+))     
-  (actualizarGen (-))     
-  (actualizarGen (*))     
-  (actualizarGen (/))     
-
-
+  (actualizarGen (+))
+  (actualizarGen (-))
+  (actualizarGen (*))
+  (actualizarGen (/))
 armarHistograma :: Int -> Int -> G Float -> G Histograma
 armarHistograma m n f g  = (histograma m (rango95 xs) xs, g')
               where
@@ -90,39 +85,38 @@ evalHistograma m n e = armarHistograma m n (eval e)
 
 -- | Mostrar las expresiones, pero evitando algunos paréntesis innecesarios.
 -- En particular queremos evitar paréntesis en sumas y productos anidados.
+
+opBinaria :: (Expr -> Bool) -> (Expr -> Bool) -> String -> Expr -> String -> Expr -> String -> String
+opBinaria fIzq fDer op e1 s1 e2 s2 =
+  maybeParen (fIzq e1) s1 ++ " " ++ op ++ " " ++ maybeParen (fDer e2) s2
 mostrar :: Expr -> String
 mostrar = recrExpr
-  (\x -> show x)
+  show
   (\a b -> show a ++ "~" ++ show b)
-  (\e1 s1 e2 s2 -> maybeParen (esMulDiv e1) s1 ++ " + " ++ maybeParen (esMulDiv e2) s2)  
-  (\e1 s1 e2 s2 -> maybeParen (esOp e1) s1 ++ " - " ++ maybeParen (esOp e2) s2)
-  (\e1 s1 e2 s2 -> maybeParen (esSumRes e1) s1 ++ " * " ++ maybeParen (esSumRes e2) s2)
-  (\e1 s1 e2 s2 -> maybeParen (esSumRes e1) s1 ++ " / " ++ maybeParen (esOp e2) s2)
+  (opBinaria (\e -> not (esLiteral e || esSuma e))
+             (\e -> not (esLiteral e || esSuma e)) "+")
+  (opBinaria (not . esLiteral)
+             (not . esLiteral) "-")
+  (opBinaria (\e -> not (esLiteral e || esMult e))
+             (\e -> not (esLiteral e || esMult e)) "*")
+  (opBinaria (not . esLiteral)
+             (not . esLiteral) "/")
   where
-    -- es cualquier operador (suma, resta, mult, div)
-    esOp e = case constructor e of
-               CESuma  -> True
-               CEResta -> True
-               CEMult  -> True
-               CEDiv   -> True
-               _       -> False
-
-    -- es suma o resta
-    esSumRes e = case constructor e of
-                   CESuma  -> True
-                   CEResta -> True
-                   _       -> False
-
-    -- es multiplicación o división
-    esMulDiv e = case constructor e of
-                   CEMult  -> True
-                   CEDiv   -> True
-                   _       -> False
-
-
+    esLiteral e = case constructor e of
+      CEConst -> True
+      CERango -> True
+      _       -> False
+    
+    esSuma e = constructor e == CESuma
+    
+    esResta e = constructor e == CEResta
+    
+    esMult e = constructor e == CEMult
+    
+    esDiv e = constructor e == CEDiv
+      
 data ConstructorExpr = CEConst | CERango | CESuma | CEResta | CEMult | CEDiv
   deriving (Show, Eq)
-
 -- | Indica qué constructor fue usado para crear la expresión.
 constructor :: Expr -> ConstructorExpr
 constructor (Const _) = CEConst
@@ -131,7 +125,6 @@ constructor (Suma _ _) = CESuma
 constructor (Resta _ _) = CEResta
 constructor (Mult _ _) = CEMult
 constructor (Div _ _) = CEDiv
-
 -- | Agrega paréntesis antes y después del string si el Bool es True.
 maybeParen :: Bool -> String -> String
 maybeParen True s = "(" ++ s ++ ")"
