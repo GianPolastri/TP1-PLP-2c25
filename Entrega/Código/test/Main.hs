@@ -249,7 +249,21 @@ testsMostrar =
       mostrar (Suma (Mult (Suma (Const 1) (Const 2)) (Const 3)) (Const 4))
         ~?= "((1.0 + 2.0) * 3.0) + 4.0",
       mostrar (Mult (Suma (Suma (Const 1) (Const 2)) (Const 3)) (Const 4))
-        ~?= "(1.0 + 2.0 + 3.0) * 4.0"
+        ~?= "(1.0 + 2.0 + 3.0) * 4.0",
+      mostrar (Suma (Resta (Const 1) (Const 2)) (Const 3))
+        ~?= "(1.0 - 2.0) + 3.0",
+      mostrar (Suma (Const 1) (Resta (Const 2) (Const 3)))
+        ~?= "1.0 + (2.0 - 3.0)",
+      mostrar (Mult (Div (Const 1) (Const 2)) (Const 3))
+        ~?= "(1.0 / 2.0) * 3.0",
+      mostrar (Mult (Const 1) (Div (Const 2) (Const 3)))
+        ~?= "1.0 * (2.0 / 3.0)",
+      mostrar (Div (Mult (Const 1) (Const 2)) (Const 3))
+        ~?= "(1.0 * 2.0) / 3.0",
+      mostrar (Div (Const 1) (Mult (Const 2) (Const 3)))
+        ~?= "1.0 / (2.0 * 3.0)",
+      mostrar (Div (Div (Const 1) (Const 2)) (Div (Const 3) (Const 4)))
+        ~?= "(1.0 / 2.0) / (3.0 / 4.0)"
     ]
 
 testsMostrarFloat :: Test

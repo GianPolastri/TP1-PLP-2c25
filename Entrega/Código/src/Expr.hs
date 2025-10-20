@@ -95,10 +95,10 @@ mostrar :: Expr -> String
 mostrar = recrExpr
   show
   (\a b -> show a ++ "~" ++ show b)
-  (mostrarBin "+"  [CEMult, CEDiv])
+  (mostrarBin "+"  [CEResta, CEMult, CEDiv])
   (mostrarBin "-"  [CESuma, CEResta, CEMult, CEDiv])
-  (mostrarBin "*"  [CESuma, CEResta])
-  (mostrarBin "/"  [CESuma, CEResta, CEMult, CEDiv])
+  (mostrarBin "*"  [CEDiv, CESuma, CEResta])
+  (mostrarBin "/"  [CEMult, CEDiv, CESuma, CEResta])
   where
     mostrarBin :: String -> [ConstructorExpr] -> Expr -> String -> Expr -> String -> String
     mostrarBin op cons e1 s1 e2 s2 =
