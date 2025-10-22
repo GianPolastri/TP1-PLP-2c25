@@ -44,11 +44,6 @@ foldExpr fCons fRang fSum fRes fMul fDiv e  = case e of
                                   where
                                     rec     = foldExpr fCons fRang fSum fRes fMul fDiv
 
-
--- Constante que deja el generador sin modificar
-constG :: Float -> G Float
-constG x g = (x, g)
-
 -- recibo un gnerador se lo paso al subarbol izquierdo y lo actualizo para pasarselo al subarbol derecho
 -- (rango es el unico que actualiza generadores)
 actualizarGen :: (Float -> Float -> Float) -> G Float -> G Float -> G Float
@@ -107,7 +102,7 @@ mostrar = recrExpr
        in s1' ++ " " ++ op ++ " " ++ s2'
 
 {-
-- mostrarBin recibe un operador y una lista de constructores que requieren paréntesis
+- mostrarBin recibe un operador y una lista de constructores que requieren (o no) paréntesis
 op: operador
 cons: lista de constructores que requieren los paréntesis
 e1: subexp izquierda
@@ -115,6 +110,7 @@ s1: representación de e1 convertida por recExpr
 e2: subexp derecha
 s2: representación de e2 convertida por recExpr
 -}
+
 data ConstructorExpr = CEConst | CERango | CESuma | CEResta | CEMult | CEDiv
   deriving (Show, Eq)
 
